@@ -1,0 +1,34 @@
+name: Update News Popularity (Using Docker Image)
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # 每 4 小時運行一次
+  workflow_dispatch:  # 允許手動觸發
+  push:
+    branches:
+      - main  # 只有 main 分支的變更才會觸發
+
+jobs:
+  run-popularity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Pull and Run Google Trends Scraper
+        run: |
+          docker pull rollin2000tw/google-trends-scraper:latest
+          docker run --rm \
+            -v $(pwd)/app/output:/app/output \
+            rollin2000tw/google-trends-scraper python google_trends_scraper.py
+
+      - name: Run Popularity Calculation
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          docker pull rollin2000tw/google-trends-scraper:latest
+          docker run --rm \
+            -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
+            -v $(pwd)/app/output:/app/output \
+            rollin2000tw/google-trends-scraper python set_popularity.py
