@@ -1,3 +1,4 @@
+# docker run --rm -it google-trends-scraper python google_trends_scraper.py
 from playwright.sync_api import sync_playwright
 import json
 import os
