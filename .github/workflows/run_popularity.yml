@@ -10,7 +10,7 @@ on:
 
 jobs:
   run-popularity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # GitHub Actions 預設是 AMD64，不需要額外設置
 
     steps:
       - name: Checkout Repository
@@ -18,7 +18,7 @@ jobs:
 
       - name: Pull and Run Google Trends Scraper
         run: |
-          docker pull rollin2000tw/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -v $(pwd)/app/output:/app/output \
             rollin2000tw/google-trends-scraper python google_trends_scraper.py
@@ -27,7 +27,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker pull rollin2000tw/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
             -v $(pwd)/app/output:/app/output \
