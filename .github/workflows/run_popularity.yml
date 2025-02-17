@@ -1,4 +1,4 @@
-name: Update News Popularity (Using Docker Image)
+name: Update News Popularity (Using Pre-Built Docker Image)
 
 on:
   schedule:
@@ -10,25 +10,30 @@ on:
 
 jobs:
   run-popularity:
-    runs-on: ubuntu-latest  # GitHub Actions 預設是 AMD64，不需要額外設置
+    runs-on: ubuntu-latest  # GitHub Actions 預設是 AMD64
 
     steps:
+      # 1. (可選) 檢出原始碼，如果只想單純 pull docker image 來跑，可以省略
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # 2. Pull & Run Google Trends Scraper
       - name: Pull and Run Google Trends Scraper
         run: |
-          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest
           docker run --rm \
             -v $(pwd)/app/output:/app/output \
-            rollin2000tw/google-trends-scraper python google_trends_scraper.py
+            <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest \
+            python google_trends_scraper.py
 
+      # 3. Pull & Run Popularity Calculation
       - name: Run Popularity Calculation
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest
           docker run --rm \
             -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
             -v $(pwd)/app/output:/app/output \
-            rollin2000tw/google-trends-scraper python set_popularity.py
+            <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest \
+            python set_popularity.py
