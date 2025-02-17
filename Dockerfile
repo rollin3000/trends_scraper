@@ -33,8 +33,8 @@ RUN pip install --no-cache-dir playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=0
 RUN playwright install --with-deps chromium
 
-# 6. 設定適當權限，避免 `GitHub Actions` 或 `Docker` 權限問題
-RUN chmod -R 777 /root/.cache/ms-playwright
+# 6. **[修正] 確保 Playwright 目錄存在後再修改權限**
+RUN mkdir -p /root/.cache/ms-playwright && chmod -R 777 /root/.cache/ms-playwright
 
 # 7. 設定工作目錄，確保 COPY 之前設置
 WORKDIR /app
