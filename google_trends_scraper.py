@@ -15,7 +15,6 @@ urls = [
 # 自由時報的 URL
 ltn_url = "https://www.ltn.com.tw/"
 
-# 爬蟲主邏輯
 def scrape_trending_keywords():
     results = []
     output_path = "/app/output/trending_keywords.json"  # Docker 容器中的保存路徑
@@ -49,15 +48,37 @@ def scrape_trending_keywords():
             for entry in urls:
                 category = entry["category"]
                 url = entry["url"]
+
                 try:
                     page = context.new_page()
-                    page.goto(url, wait_until="load", timeout=120000)
+                    # 使用 networkidle 等待網頁完全載入
+                    page.goto(url, wait_until="networkidle", timeout=120000)
                     print(f"正在處理分類 {category} 的資料...")
 
-                    target_rows = page.query_selector_all(
-                        "#trend-table > div.enOdEe-wZVHld-zg7Cn-haAclf > table > tbody:nth-child(3) > tr"
-                    )
+                    # 顯式等待 table 的元素 (最多等 10 秒)
+                    selector = "#trend-table > div.enOdEe-wZVHld-zg7Cn-haAclf > table > tbody:nth-child(3) > tr"
+                    try:
+                        page.wait_for_selector(selector, timeout=10_000)
+                    except:
+                        print("指定的表格元素在逾時內仍未出現，可能無資料或載入過慢。")
 
+                    # 簡單重試機制：若抓到 0 筆，就 reload 再嘗試一次
+                    max_sub_attempts = 2
+                    target_rows = []
+                    for sub_attempt in range(max_sub_attempts):
+                        target_rows = page.query_selector_all(selector)
+                        if target_rows:
+                            break
+                        else:
+                            print(f"[分類 {category}] 第 {sub_attempt+1} 次抓取 0 筆，稍等 3 秒後重新整理...")
+                            page.wait_for_timeout(3_000)
+                            page.reload(wait_until="networkidle")
+                            try:
+                                page.wait_for_selector(selector, timeout=10_000)
+                            except:
+                                pass  # 如果還是抓不到，就繼續回圈，最後還是 0 筆
+
+                    # 開始擷取資料
                     for rank, row in enumerate(target_rows, start=1):
                         main_keyword = row.query_selector(".mZ3RIc")
                         main_keyword_text = main_keyword.text_content().strip() if main_keyword else ""
@@ -76,6 +97,7 @@ def scrape_trending_keywords():
                         })
 
                     print(f"分類 {category} 資料處理完成，共 {len(target_rows)} 條。")
+
                 except Exception as e:
                     print(f"爬取分類 {category} 時出現錯誤: {e}")
                 finally:
@@ -89,13 +111,15 @@ def scrape_trending_keywords():
 
             for attempt in range(3):  # 最多嘗試 3 次
                 try:
-                    page.goto(ltn_url, wait_until="load", timeout=120000)
+                    # 同樣改用 networkidle
+                    page.goto(ltn_url, wait_until="networkidle", timeout=120000)
+
+                    # 若要更精準，可再 wait_for_selector(...) 看自由時報頁面結構
                     hot_keywords = page.query_selector_all('[id^="hot_keyword_area_word_"]')[:20]
                     if not hot_keywords:
                         print("未找到自由時報的熱度關鍵字")
                     else:
                         for rank, element in enumerate(hot_keywords, start=1):
-                            # 這裡加了 except 區塊
                             try:
                                 keyword_text = element.get_attribute("data-desc") or ""
                                 link_element = element.query_selector("a")
@@ -108,9 +132,10 @@ def scrape_trending_keywords():
                                 })
                             except Exception as e:
                                 print(f"爬取自由時報第 {rank} 條熱度關鍵字時出現錯誤: {e}")
-
+                                
                     print("自由時報資料處理完成，共 {} 條。".format(len(hot_keywords)))
                     break
+
                 except Exception as e:
                     print(f"爬取自由時報資料失敗，重試次數 {attempt + 1}/3：{e}")
                     time.sleep(5)  # 等待 5 秒後重試
@@ -130,6 +155,7 @@ def scrape_trending_keywords():
             raise
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     scrape_trending_keywords()
