@@ -6,50 +6,55 @@ on:
   workflow_dispatch:  # 允許手動觸發
   push:
     branches:
-      - main
+      - main  # 只有 main 分支的變更才會觸發
 
 jobs:
   run-popularity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # GitHub Actions 預設是 AMD64
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set Timezone
-        run: sudo timedatectl set-timezone Asia/Taipei
-
-      - name: Test Google Trends API Connectivity
+      # 檢查 Playwright 是否已安裝
+      - name: Check Playwright Installation
         run: |
-          docker run --rm rollin2000tw/google-trends-scraper bash -c "wget -S --spider https://trends.google.com/trends/api/explore"
+          docker run --rm rollin2000tw/google-trends-scraper \
+            bash -c "playwright --version"
 
-      - name: Verify Playwright Installation
+      # 安裝 Playwright 瀏覽器
+      - name: Install Playwright Browsers
         run: |
-          docker run --rm rollin2000tw/google-trends-scraper bash -c "ls -lah /root/.cache/ms-playwright"
+          docker run --rm rollin2000tw/google-trends-scraper \
+            bash -c "playwright install --with-deps chromium"
 
-      - name: Ensure Output Directory Exists
-        run: mkdir -p $(pwd)/app/output
-
-      - name: Pull Latest Docker Image
-        run: docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
-
-      - name: Run Google Trends Scraper
+      # 測試 Playwright 是否能開啟 Google
+      - name: Test Playwright Headless Chromium
         run: |
+          docker run --rm rollin2000tw/google-trends-scraper \
+            bash -c "playwright open --headless google.com"
+
+      # 測試 Google Trends 是否可以被訪問
+      - name: Check Google Trends Access
+        run: |
+          docker run --rm rollin2000tw/google-trends-scraper \
+            bash -c "playwright open --headless https://trends.google.com/trends/api/explore"
+
+      # 2. Pull & Run Google Trends Scraper
+      - name: Pull and Run Google Trends Scraper
+        run: |
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -v $(pwd)/app/output:/app/output \
             rollin2000tw/google-trends-scraper:latest \
             python google_trends_scraper.py
 
-      - name: Check Output Directory Content
-        run: ls -lah $(pwd)/app/output
-
-      - name: Show Trending Keywords JSON
-        run: cat $(pwd)/app/output/trending_keywords.json || echo "No data found."
-
+      # 3. Pull & Run Popularity Calculation
       - name: Run Popularity Calculation
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
             -v $(pwd)/app/output:/app/output \
