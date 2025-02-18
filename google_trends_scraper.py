@@ -21,22 +21,39 @@ def scrape_trending_keywords():
     output_path = "/app/output/trending_keywords.json"  # Docker 容器中的保存路徑
 
     with sync_playwright() as p:
-        # 啟動無頭瀏覽器
-        browser = p.chromium.launch(headless=True)
+        # 1. 啟動瀏覽器時，關閉自動化偵測標記，增加隱匿性
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]  # 關閉自動化檢測
+        )
 
         try:
+            # 2. 創建帶自訂 User-Agent / Headers 的 Context
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/114.0.0.0 Safari/537.36"
+                ),
+                extra_http_headers={
+                    "Accept-Language": "zh-TW,zh;q=0.9",
+                    "Referer": "https://www.google.com/",
+                    "Connection": "keep-alive"
+                }
+            )
+
+            # ---------------------------
             # 爬取 Google Trends 的熱度資料
+            # ---------------------------
             print("開始爬取 Google Trends 資料...")
             for entry in urls:
                 category = entry["category"]
                 url = entry["url"]
-
                 try:
-                    page = browser.new_page()
+                    page = context.new_page()
                     page.goto(url, wait_until="load", timeout=120000)
                     print(f"正在處理分類 {category} 的資料...")
 
-                    # 抓取目標區域
                     target_rows = page.query_selector_all(
                         "#trend-table > div.enOdEe-wZVHld-zg7Cn-haAclf > table > tbody:nth-child(3) > tr"
                     )
@@ -64,11 +81,12 @@ def scrape_trending_keywords():
                 finally:
                     page.close()
 
+            # ---------------------------
             # 爬取自由時報的熱度資料
+            # ---------------------------
             print("開始爬取自由時報的資料...")
-            page = browser.new_page()
+            page = context.new_page()
 
-            # 重試邏輯
             for attempt in range(3):  # 最多嘗試 3 次
                 try:
                     page.goto(ltn_url, wait_until="load", timeout=120000)
@@ -77,11 +95,11 @@ def scrape_trending_keywords():
                         print("未找到自由時報的熱度關鍵字")
                     else:
                         for rank, element in enumerate(hot_keywords, start=1):
+                            # 這裡加了 except 區塊
                             try:
                                 keyword_text = element.get_attribute("data-desc") or ""
                                 link_element = element.query_selector("a")
                                 link = link_element.get_attribute("href") if link_element else ""
-
                                 results.append({
                                     "source": "自由時報",
                                     "rank": rank,
@@ -90,6 +108,7 @@ def scrape_trending_keywords():
                                 })
                             except Exception as e:
                                 print(f"爬取自由時報第 {rank} 條熱度關鍵字時出現錯誤: {e}")
+
                     print("自由時報資料處理完成，共 {} 條。".format(len(hot_keywords)))
                     break
                 except Exception as e:
@@ -98,7 +117,9 @@ def scrape_trending_keywords():
                 finally:
                     page.close()
 
+            # ---------------------------
             # 保存結果到檔案
+            # ---------------------------
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
@@ -110,6 +131,5 @@ def scrape_trending_keywords():
         finally:
             browser.close()
 
-# 運行爬蟲
 if __name__ == "__main__":
     scrape_trending_keywords()
