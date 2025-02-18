@@ -65,18 +65,27 @@ def scrape_trending_keywords():
                     # 簡單重試機制：若抓到 0 筆，就 reload 再嘗試一次
                     max_sub_attempts = 2
                     target_rows = []
+
                     for sub_attempt in range(max_sub_attempts):
                         target_rows = page.query_selector_all(selector)
-                        if target_rows:
-                            break
-                        else:
-                            print(f"[分類 {category}] 第 {sub_attempt+1} 次抓取 0 筆，稍等 3 秒後重新整理...")
-                            page.wait_for_timeout(8_000)
-                            page.reload(wait_until="networkidle")
-                            try:
-                                page.wait_for_selector(selector, timeout=10_000)
-                            except:
-                                pass  # 如果還是抓不到，就繼續回圈，最後還是 0 筆
+                    if target_rows:
+                        break
+                    else:
+                        print(f"[分類 {category}] 第 {sub_attempt+1} 次抓取 0 筆，稍等 8 秒後重新整理...")
+                        print("[Debug] 即將進入 8 秒停頓，現在時間:", time.strftime("%H:%M:%S"))
+                        start_time = time.time()
+
+                        page.wait_for_timeout(8_000)  # 8 秒
+                        # 亦可改成 time.sleep(8)，效果一樣
+
+                        end_time = time.time()
+                        print(f"[Debug] 8 秒等待結束，共等待了 {end_time - start_time:.2f} 秒")
+
+                        page.reload(wait_until="networkidle")
+                        try:
+                            page.wait_for_selector(selector, timeout=10_000)
+                        except:
+                            pass
 
                     # 開始擷取資料
                     for rank, row in enumerate(target_rows, start=1):
