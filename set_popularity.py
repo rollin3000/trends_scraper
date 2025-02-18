@@ -16,9 +16,7 @@ def get_postgres_connection():
     若環境變數 DATABASE_URL 存在則優先使用，否則使用 external_db_url。
     """
     external_db_url = (
-        "postgresql://newsdata_vc3p_user:"
-        "HXLUZa2xgOH4wk1Eq2witr88llkm7bqG"
-        "@dpg-cu0om3jtq21c73c06280-a.singapore-postgres.render.com/newsdata_vc3p"
+        "postgresql://newsdata_vc3p_user:HXLUZa2xgOH4wk1Eq2witr88llkm7bqG@dpg-cu0om3jtq21c73c06280-a.singapore-postgres.render.com/newsdata_vc3p"
     )
     db_url = os.getenv("DATABASE_URL", external_db_url)
     return psycopg2.connect(db_url)
