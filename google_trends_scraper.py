@@ -71,7 +71,7 @@ def scrape_trending_keywords():
                             break
                         else:
                             print(f"[分類 {category}] 第 {sub_attempt+1} 次抓取 0 筆，稍等 3 秒後重新整理...")
-                            page.wait_for_timeout(3_000)
+                            page.wait_for_timeout(8_000)
                             page.reload(wait_until="networkidle")
                             try:
                                 page.wait_for_selector(selector, timeout=10_000)
@@ -132,7 +132,7 @@ def scrape_trending_keywords():
                                 })
                             except Exception as e:
                                 print(f"爬取自由時報第 {rank} 條熱度關鍵字時出現錯誤: {e}")
-                                
+
                     print("自由時報資料處理完成，共 {} 條。".format(len(hot_keywords)))
                     break
 
