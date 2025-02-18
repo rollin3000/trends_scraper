@@ -20,10 +20,10 @@ jobs:
       # 2. Pull & Run Google Trends Scraper
       - name: Pull and Run Google Trends Scraper
         run: |
-          docker pull --platform=linux/amd64 <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -v $(pwd)/app/output:/app/output \
-            <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest \
+            rollin2000tw/google-trends-scraper:latest \
             python google_trends_scraper.py
 
       # 3. Pull & Run Popularity Calculation
@@ -31,9 +31,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker pull --platform=linux/amd64 <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest
+          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
             -v $(pwd)/app/output:/app/output \
-            <YOUR_DOCKERHUB_USERNAME>/google-trends-scraper:latest \
+            rollin2000tw/google-trends-scraper:latest \
             python set_popularity.py
