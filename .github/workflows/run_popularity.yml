@@ -29,18 +29,18 @@ jobs:
             bash -c "playwright install --with-deps chromium"
 
       # 測試 Playwright 是否能開啟 Google
-      - name: Test Playwright Headless Chromium
+      - name: Test Playwright Headless Chromium (Using Python)
         run: |
-          docker run --rm rollin2000tw/google-trends-scraper \
-            bash -c "playwright open --headless google.com"
+          docker run --rm rollin2000tw/google-trends-scraper python -c \
+            "from playwright.sync_api import sync_playwright; p = sync_playwright().start(); b = p.chromium.launch(headless=True); print('Success'); b.close()"
 
       # 測試 Google Trends 是否可以被訪問
       - name: Check Google Trends Access
         run: |
           docker run --rm rollin2000tw/google-trends-scraper \
-            bash -c "playwright open --headless https://trends.google.com/trends/api/explore"
+            bash -c "wget -S --spider https://trends.google.com/trends/api/explore"
 
-      # 2. Pull & Run Google Trends Scraper
+      # 執行爬蟲
       - name: Pull and Run Google Trends Scraper
         run: |
           docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
@@ -49,7 +49,7 @@ jobs:
             rollin2000tw/google-trends-scraper:latest \
             python google_trends_scraper.py
 
-      # 3. Pull & Run Popularity Calculation
+      # 執行 Popularity Calculation
       - name: Run Popularity Calculation
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
