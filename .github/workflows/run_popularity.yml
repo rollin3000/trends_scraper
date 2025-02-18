@@ -13,25 +13,53 @@ jobs:
     runs-on: ubuntu-latest  # GitHub Actions 預設是 AMD64
 
     steps:
-      # 1. (可選) 檢出原始碼，如果只想單純 pull docker image 來跑，可以省略
+      # 1. 檢出原始碼
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Pull & Run Google Trends Scraper
-      - name: Pull and Run Google Trends Scraper
+      # 2. 設定時區，避免 Google Trends 時區影響
+      - name: Set Timezone
+        run: sudo timedatectl set-timezone Asia/Taipei
+
+      # 3. 測試 Google Trends API 是否可訪問
+      - name: Test Google Trends API Connectivity
         run: |
-          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
+          docker run --rm rollin2000tw/google-trends-scraper bash -c "curl -I https://trends.google.com/trends/api/explore"
+
+      # 4. 確保 Playwright 正確安裝並顯示已安裝的瀏覽器
+      - name: Verify Playwright Installation
+        run: |
+          docker run --rm rollin2000tw/google-trends-scraper bash -c "playwright install --with-deps chromium && playwright show browsers"
+
+      # 5. 確保輸出目錄存在，避免 volume 掛載問題
+      - name: Ensure Output Directory Exists
+        run: mkdir -p $(pwd)/app/output
+
+      # 6. 下載最新的 Docker Image
+      - name: Pull Latest Docker Image
+        run: docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
+
+      # 7. 執行 Google Trends 爬取
+      - name: Run Google Trends Scraper
+        run: |
           docker run --rm \
             -v $(pwd)/app/output:/app/output \
             rollin2000tw/google-trends-scraper:latest \
             python google_trends_scraper.py
 
-      # 3. Pull & Run Popularity Calculation
+      # 8. 確保 /app/output 內有結果
+      - name: Check Output Directory Content
+        run: ls -lah $(pwd)/app/output
+
+      # 9. 顯示爬取的 JSON 內容 (前 100 行)
+      - name: Show Trending Keywords JSON
+        run: head -n 100 $(pwd)/app/output/trending_keywords.json
+
+      # 10. 執行新聞熱度計算
       - name: Run Popularity Calculation
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
             -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
             -v $(pwd)/app/output:/app/output \
