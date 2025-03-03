@@ -44,12 +44,6 @@ jobs:
           echo "✅ DATABASE_URL is set. Running set_popularity.py..."
           
           # 明確傳遞環境變數給 Docker
-          docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
-          docker run --rm \
-            -e DATABASE_URL="${DATABASE_URL}" \
-            -v $(pwd)/app/output:/app/output \
-            rollin2000tw/google-trends-scraper:latest \
-            python set_popularity.py
           
           docker pull --platform=linux/amd64 rollin2000tw/google-trends-scraper:latest
           docker run --rm \
