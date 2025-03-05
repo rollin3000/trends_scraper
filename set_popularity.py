@@ -109,7 +109,10 @@ def update_news_popularity(keywords_file_path):
                 for news_item in rows:
                     news_id = news_item.id
                     current_pop = news_item.popularity
-                    proc_status = int(news_item.processing_status or 0)
+                    try:
+                        proc_status = int(news_item.processing_status)
+                    except ValueError:
+                        proc_status = 0  # 轉換失敗則視為 0
 
                     related_incr = 1.0 * (0.5 ** proc_status)
                     new_pop = current_pop + related_incr
@@ -139,7 +142,10 @@ def update_news_popularity(keywords_file_path):
             for news_item in main_rows:
                 news_id = news_item.id
                 current_pop = news_item.popularity
-                proc_status = int(news_item.processing_status or 0)
+                try:
+                    proc_status = int(news_item.processing_status)
+                except ValueError:
+                    proc_status = 0  # 轉換失敗則視為 0
 
                 mk_incr = mk_score_raw * (0.5 ** proc_status)
                 new_pop = current_pop + mk_incr
