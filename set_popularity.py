@@ -6,6 +6,10 @@ import json
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
 import math
+import logging
+
+# 設定日誌
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --------------------------------------------------
 #  1) 資料庫連線函式
@@ -65,7 +69,7 @@ def update_news_popularity(keywords_file_path):
     """
 
     if not os.path.exists(keywords_file_path):
-        print(f"[Error] 找不到關鍵字文件: {keywords_file_path}")
+        logging.error(f"找不到關鍵字文件: {keywords_file_path}")
         return
 
     # 讀取 JSON
@@ -73,7 +77,7 @@ def update_news_popularity(keywords_file_path):
         try:
             keywords_data = json.load(f)
         except json.JSONDecodeError:
-            print("[Error] 無法解析關鍵字 JSON 文件")
+            logging.error("無法解析關鍵字 JSON 文件")
             return
 
     conn = get_postgres_connection()
@@ -111,8 +115,9 @@ def update_news_popularity(keywords_file_path):
                     current_pop = news_item.popularity
                     try:
                         proc_status = int(news_item.processing_status)
-                    except ValueError:
-                        proc_status = 0  # 轉換失敗則視為 0
+                    except (ValueError, TypeError):
+                        logging.warning(f"[Warning] 無法解析 processing_status，將其視為 0: {news_item.processing_status}")
+                        proc_status = 0
 
                     related_incr = 1.0 * (0.5 ** proc_status)
                     new_pop = current_pop + related_incr
@@ -125,8 +130,8 @@ def update_news_popularity(keywords_file_path):
                         WHERE id = %s
                     ''', (new_pop, new_status, news_id))
 
-                    print(f"[Related] news_id={news_id}, old_pop={current_pop}, +{related_incr:.2f}, "
-                          f"proc_status={proc_status}->{new_status}, keyword={rkw}")
+                    logging.info(f"[Related] news_id={news_id}, old_pop={current_pop}, +{related_incr:.2f}, "
+                                 f"proc_status={proc_status}->{new_status}, keyword={rkw}")
 
             # ----------------------------------------
             #  (B) 更新 main_keyword
@@ -144,8 +149,9 @@ def update_news_popularity(keywords_file_path):
                 current_pop = news_item.popularity
                 try:
                     proc_status = int(news_item.processing_status)
-                except ValueError:
-                    proc_status = 0  # 轉換失敗則視為 0
+                except (ValueError, TypeError):
+                    logging.warning(f"[Warning] 無法解析 processing_status，將其視為 0: {news_item.processing_status}")
+                    proc_status = 0
 
                 mk_incr = mk_score_raw * (0.5 ** proc_status)
                 new_pop = current_pop + mk_incr
@@ -158,13 +164,13 @@ def update_news_popularity(keywords_file_path):
                     WHERE id = %s
                 ''', (new_pop, new_status, news_id))
 
-                print(f"[Main] news_id={news_id}, old_pop={current_pop}, +{mk_incr:.2f}, "
-                      f"proc_status={proc_status}->{new_status}, main_keyword={main_keyword}")
+                logging.info(f"[Main] news_id={news_id}, old_pop={current_pop}, +{mk_incr:.2f}, "
+                             f"proc_status={proc_status}->{new_status}, main_keyword={main_keyword}")
 
         conn.commit()
-        print("✅ 新聞熱度更新完成!")
+        logging.info("✅ 新聞熱度更新完成!")
     except Exception as e:
-        print(f"[Error] {e}")
+        logging.error(f"[Error] {e}")
         conn.rollback()
     finally:
         cur.close()
